@@ -36,5 +36,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: auto_trader_windows_exe
-        path: packaging/dist/auto_trader/
+        path: packaging/dist/auto_trader.exe
         retention-days: 30
