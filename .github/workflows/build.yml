@@ -26,8 +26,10 @@ jobs:
         pip install akshare pandas numpy requests lxml openpyxl aiohttp
 
     - name: Build EXE with PyInstaller
+      working-directory: packaging
+      env:
+        PROJECT_ROOT: ${{ github.workspace }}
       run: |
-        cd packaging
         pyinstaller auto_trader.spec --clean
 
     - name: Upload artifact
