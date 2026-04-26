@@ -59,14 +59,13 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,        # 打包后无黑窗口
+    console=True,         # 调试模式，打包后有黑窗口便于查看错误
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=None,            # 可加 icon.ico
-    version='version_info.txt',
 )
 
 coll = COLLECT(
@@ -75,7 +74,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     name='auto_trader',
 )
