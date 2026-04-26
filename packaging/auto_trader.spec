@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# auto_trader.spec — PyInstaller 打包配置 (简化版)
+# auto_trader.spec — PyInstaller 打包配置 (修复版)
 # 运行: pyinstaller auto_trader.spec --clean
 
 import sys, os
@@ -7,13 +7,18 @@ from pathlib import Path
 
 block_cipher = None
 
+# 固定项目根目录（绝对路径）
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+MAIN_SCRIPT = str(PROJECT_ROOT / 'main.py')
+STOCK_POOL_JSON = str(PROJECT_ROOT / 'stock_pool.json')
+
 # 主入口脚本
 a = Analysis(
-    [str(Path(__file__).parent.parent / 'main.py')],
-    pathex=[str(Path(__file__).parent.parent.resolve())],
+    [MAIN_SCRIPT],
+    pathex=[str(PROJECT_ROOT)],
     binaries=[],
     datas=[
-        (str(Path(__file__).parent.parent / 'stock_pool.json'), '.'),
+        (STOCK_POOL_JSON, '.'),
     ],
     hiddenimports=[
         # akshare（核心数据源）
