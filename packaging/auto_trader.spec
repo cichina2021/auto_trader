@@ -1,42 +1,47 @@
 # -*- mode: python ; coding: utf-8 -*-
-# auto_trader.spec — PyInstaller 打包配置
-# 运行: pyinstaller auto_trader.spec
+# auto_trader.spec — PyInstaller 打包配置 (简化版)
+# 运行: pyinstaller auto_trader.spec --clean
 
 import sys, os
 from pathlib import Path
 
 block_cipher = None
 
-# 主入口
+# 主入口脚本
 a = Analysis(
-    ['../main.py'],
-    pathex=[Path(__file__).parent.resolve()],
+    [str(Path(__file__).parent.parent / 'main.py')],
+    pathex=[str(Path(__file__).parent.parent.resolve())],
     binaries=[],
     datas=[
-        # 股票池 JSON (bundled in EXE)
-        ('../stock_pool.json', '.'),
-        # akshare 数据文件 (抓取所有依赖)
-        ('../data', 'data'),
-        ('../strategy', 'strategy'),
-        ('../vision', 'vision'),
-        ('../config', 'config'),
-        ('../risk', 'risk'),
-        ('../core', 'core'),
+        (str(Path(__file__).parent.parent / 'stock_pool.json'), '.'),
     ],
     hiddenimports=[
-        # akshare 核心依赖
-        'akshare', 'akshare.stock', 'akshare.stock.stock_zh_a_spot_em',
+        # akshare（核心数据源）
+        'akshare',
+        'akshare.stock',
+        'akshare.stock.stock_zh_a_spot_em',
         'akshare.stock.stock_zh_a_hist',
-        'akshare.cons', 'akshare.pro', 'akshare.pro.data_pro',
-        'pandas', 'pandas._libs', 'pandas._libs.tslibs',
-        'numpy', 'numpy.core', 'numpy.linalg',
-        'requests', 'urllib3', 'certifi', 'charset_normalizer',
-        'idna', 'python_dateutil', 'pytz', 'six',
-        'lxml', 'et_xmlfile', 'openpyxl', 'xlrd', 'xlwt',
-        'aiohttp', 'aiohttp_speed_up',
-        # 标准库隐式导入
+        'akshare.cons',
+        'akshare.pro',
+        'akshare.pro.data_pro',
+        'akshare.optional',
+        'akshare.derivative',
+        # 数据处理
+        'pandas',
+        'numpy',
+        'requests',
+        'urllib3',
+        'lxml',
+        'openpyxl',
+        'xlrd',
+        'aiohttp',
+        # 标准库
         'json', 'logging', 'datetime', 'threading', 'pathlib',
         'http.server', 'socketserver', 'urllib.request',
+        'email', 'html', 'xml', 'csv', 'io',
+        'concurrent.futures', 'queue', 'socket', 'struct',
+        'certifi', 'charset_normalizer', 'idna', 'python_dateutil',
+        'pytz', 'six', 'dateutil',
     ],
     hookspath=[],
     hooksconfig={},
@@ -49,6 +54,7 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# 单文件模式
 exe = EXE(
     pyz,
     a.scripts,
@@ -58,23 +64,12 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    console=True,         # 调试模式，打包后有黑窗口便于查看错误
+    upx=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,            # 可加 icon.ico
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    name='auto_trader',
+    icon=None,
 )
