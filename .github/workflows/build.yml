@@ -27,37 +27,7 @@ jobs:
 
     - name: Build EXE with PyInstaller
       run: |
-        pyinstaller main.py `
-          --onefile `
-          --name auto_trader `
-          --distpath dist `
-          --workpath build `
-          --specpath packaging `
-          --add-data "stock_pool.json;." `
-          --hidden-import=akshare `
-          --hidden-import=akshare.stock `
-          --hidden-import=akshare.stock.stock_zh_a_spot_em `
-          --hidden-import=akshare.stock.stock_zh_a_hist `
-          --hidden-import=akshare.cons `
-          --hidden-import=akshare.pro `
-          --hidden-import=akshare.pro.data_pro `
-          --hidden-import=pandas `
-          --hidden-import=numpy `
-          --hidden-import=requests `
-          --hidden-import=urllib3 `
-          --hidden-import=lxml `
-          --hidden-import=openpyxl `
-          --hidden-import=aiohttp `
-          --hidden-import=concurrent.futures `
-          --hidden-import=queue `
-          --hidden-import=certifi `
-          --hidden-import=charset_normalizer `
-          --hidden-import=idna `
-          --hidden-import=python_dateutil `
-          --hidden-import=pytz `
-          --hidden-import=six `
-          --hidden-import=dateutil
-      shell: powershell
+        pyinstaller main.py --onefile --name auto_trader --distpath dist --workpath build --specpath packaging --add-data "stock_pool.json;." --hidden-import=akshare --hidden-import=akshare.stock --hidden-import=akshare.stock.stock_zh_a_spot_em --hidden-import=akshare.stock.stock_zh_a_hist --hidden-import=akshare.cons --hidden-import=akshare.pro --hidden-import=akshare.pro.data_pro --hidden-import=pandas --hidden-import=numpy --hidden-import=requests --hidden-import=urllib3 --hidden-import=lxml --hidden-import=openpyxl --hidden-import=aiohttp --hidden-import=concurrent.futures --hidden-import=queue --hidden-import=certifi --hidden-import=charset_normalizer --hidden-import=idna --hidden-import=python_dateutil --hidden-import=pytz --hidden-import=six --hidden-import=dateutil
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
