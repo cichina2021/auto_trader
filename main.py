@@ -786,27 +786,209 @@ def _start_http_server(port=8080):
                 self.end_headers()
 
         def _build_html(self, results):
-            rows = []
-            for r in results:
-                chg = r['change_pct']
-                color = '#c00' if chg >= 0 else '#090'
-                rows.append(f"<tr><td>{r['code']}</td><td>{r.get('name','')}</td>"
-                            f"<td style='color:{color}'>{chg:+.2f}%</td>"
-                            f"<td>{r['confidence']:.1f}%</td>"
-                            f"<td>{r['action']}</td>"
-                            f"<td>{r['reason']}</td></tr>")
-            last = _last_scan_time.strftime('%H:%M:%S') if _last_scan_time else 'N/A'
-            return (f"<html><head><meta charset='utf-8'><title>做T监控</title>"
-                    f"<style>body{{font-family:monospace}}table{{border-collapse:collapse}}"
-                    f"td,th{{padding:4px 8px;border:1px solid #ddd}}th{{background:#f5f5f5}}"
-                    f"</style></head><body>"
-                    f"<h2>📊 做T监控系统 <small>[模式:{'模拟' if MODE=='mock' else '实盘'}]</small></h2>"
-                    f"<p>最后扫描: {last} | 股票池: {len(ALL_CODES)}只 | "
-                    f"今日交易量: {TRADED_TODAY.get(datetime.date.today().isoformat(), {})}</p>"
-                    f"<table><tr><th>代码</th><th>名称</th><th>涨跌</th><th>置信度</th>"
-                    f"<th>动作</th><th>原因</th></tr>{''.join(rows)}</table>"
-                    f"<p><small>刷新: <code>F5</code> | API: <code>POST /scan</code> {{code}}</small></p>"
-                    f"</body></html>").encode('utf-8')
+            """构建清晰分区的做T监控界面"""
+            import datetime as dt
+            
+            # 分离买卖信号
+            buy_signals = [r for r in results if r['action'] == '买']
+            sell_signals = [r for r in results if r['action'] == '卖']
+            watch_signals = [r for r in results if r['action'] == '观望']
+            
+            # 今日交易统计
+            today = dt.date.today().isoformat()
+            traded = TRADED_TODAY.get(today, {'buy': 0, 'sell': 0})
+            
+            # 做T范围计算
+            buy_range_max = COST_PRICE  # 成本价以内
+            buy_target = COST_PRICE * 0.995  # 接近成本可买
+            sell_min = COST_PRICE * 1.05  # 涨幅5%以上才卖
+            sell_target = COST_PRICE * 1.08  # 涨幅8%以上建议卖
+            
+            last_scan = _last_scan_time.strftime('%H:%M:%S') if _last_scan_time else '等待扫描...'
+            
+            # 构建HTML
+            html = f"""<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>做T监控系统</title>
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ font-family:'微软雅黑',Arial,sans-serif; background:#1a1a2e; color:#eee; min-height:100vh; }}
+.header {{ background:linear-gradient(135deg,#16213e,#0f3460); padding:20px; border-bottom:2px solid #e94560; }}
+.header h1 {{ color:#fff; font-size:24px; margin-bottom:10px; }}
+.config-bar {{ display:flex; gap:30px; flex-wrap:wrap; font-size:13px; }}
+.config-item {{ background:rgba(255,255,255,0.1); padding:8px 15px; border-radius:8px; }}
+.config-item span {{ color:#e94560; font-weight:bold; }}
+.main {{ display:grid; grid-template-columns:1fr 1fr; gap:15px; padding:15px; min-height:calc(100vh - 200px); }}
+.signal-panel {{ background:#16213e; border-radius:12px; overflow:hidden; }}
+.panel-header {{ padding:15px 20px; font-size:16px; font-weight:bold; display:flex; justify-content:space-between; align-items:center; }}
+.buy-panel .panel-header {{ background:linear-gradient(90deg,#1b4332,#2d6a4f); }}
+.sell-panel .panel-header {{ background:linear-gradient(90deg,#7f1d1d,#991b1b); }}
+.watch-panel {{ grid-column:1/-1; background:#16213e; border-radius:12px; }}
+.panel-header .count {{ background:rgba(255,255,255,0.2); padding:2px 10px; border-radius:10px; font-size:12px; }}
+.signal-list {{ padding:10px; max-height:400px; overflow-y:auto; }}
+.signal-card {{ background:rgba(255,255,255,0.05); border-radius:8px; padding:12px; margin-bottom:10px; border-left:4px solid; }}
+.buy-panel .signal-card {{ border-color:#22c55e; }}
+.sell-panel .signal-card {{ border-color:#ef4444; }}
+.watch-panel .signal-card {{ border-color:#f59e0b; }}
+.card-header {{ display:flex; justify-content:space-between; margin-bottom:8px; }}
+.code {{ font-weight:bold; font-size:15px; }}
+.name {{ color:#888; font-size:13px; }}
+.action-badge {{ padding:3px 12px; border-radius:4px; font-weight:bold; font-size:13px; }}
+.buy-panel .action-badge {{ background:#22c55e; }}
+.sell-panel .action-badge {{ background:#ef4444; }}
+.watch-panel .action-badge {{ background:#f59e0b; color:#000; }}
+.price-row {{ display:flex; gap:20px; margin:8px 0; font-size:13px; }}
+.price-item {{ flex:1; }}
+.price-label {{ color:#888; font-size:11px; }}
+.price-value {{ font-size:16px; font-weight:bold; }}
+.confidence {{ background:rgba(233,69,96,0.2); color:#e94560; padding:2px 8px; border-radius:4px; font-size:12px; }}
+.reason {{ font-size:12px; color:#aaa; margin-top:8px; line-height:1.4; }}
+.empty {{ text-align:center; color:#666; padding:40px; }}
+.footer {{ background:#16213e; padding:15px 20px; border-top:1px solid #333; display:flex; justify-content:space-between; font-size:13px; }}
+.stat {{ display:flex; gap:20px; }}
+.stat-item {{ color:#888; }}
+.stat-item span {{ color:#fff; font-weight:bold; }}
+.log-section {{ background:#0d0d1a; padding:15px; grid-column:1/-1; border-radius:12px; }}
+.log-title {{ color:#888; font-size:12px; margin-bottom:10px; }}
+.log-content {{ font-family:Consolas,monospace; font-size:12px; color:#4ade80; max-height:100px; overflow-y:auto; }}
+</style>
+</head><body>
+
+<div class="header">
+    <h1>📊 云图控股 T+0 做T监控系统</h1>
+    <div class="config-bar">
+        <div class="config-item">模式: <span>{'模拟账户' if MODE=='mock' else '实盘模式'}</span></div>
+        <div class="config-item">成本价: <span>¥{COST_PRICE:.3f}</span></div>
+        <div class="config-item">买入区间: <span>＜¥{buy_range_max:.2f}</span></div>
+        <div class="config-item">卖出区间: <span>＞¥{sell_min:.2f}</span></div>
+        <div class="config-item">做T仓位: <span>{T_POSITION}股</span></div>
+        <div class="config-item">置信度门槛: <span>{T_CONFIG['confidence_min']}%</span></div>
+    </div>
+</div>
+
+<div class="main">
+    <div class="signal-panel buy-panel">
+        <div class="panel-header">
+            🟢 买入信号
+            <span class="count">{len(buy_signals)} 只</span>
+        </div>
+        <div class="signal-list">
+"""
+            
+            # 买入信号
+            if buy_signals:
+                for r in buy_signals[:8]:
+                    chg = r['change_pct']
+                    chg_color = '#22c55e' if chg < 0 else '#f59e0b'
+                    html += f"""
+            <div class="signal-card">
+                <div class="card-header">
+                    <span class="code">{r['code']}</span>
+                    <span class="name">{r.get('name','')}</span>
+                    <span class="action-badge">买</span>
+                </div>
+                <div class="price-row">
+                    <div class="price-item">
+                        <div class="price-label">现价</div>
+                        <div class="price-value">¥{r['price']:.2f}</div>
+                    </div>
+                    <div class="price-item">
+                        <div class="price-label">建议买入</div>
+                        <div class="price-value" style="color:#22c55e">≤¥{r['price']*0.998:.2f}</div>
+                    </div>
+                    <div class="price-item">
+                        <div class="price-label">涨跌</div>
+                        <div class="price-value" style="color:{chg_color}">{chg:+.2f}%</div>
+                    </div>
+                </div>
+                <div class="reason">📌 {r.get('reason','')}</div>
+                <div style="margin-top:8px;">
+                    <span class="confidence">置信度 {r['confidence']:.0f}%</span>
+                </div>
+            </div>"""
+            else:
+                html += '<div class="empty">暂无买入信号</div>'
+            
+            html += """
+        </div>
+    </div>
+
+    <div class="signal-panel sell-panel">
+        <div class="panel-header">
+            🔴 卖出信号
+            <span class="count">""" + str(len(sell_signals)) + """ 只</span>
+        </div>
+        <div class="signal-list">
+"""
+            
+            # 卖出信号
+            if sell_signals:
+                for r in sell_signals[:8]:
+                    chg = r['change_pct']
+                    chg_color = '#ef4444' if chg > 0 else '#f59e0b'
+                    html += f"""
+            <div class="signal-card">
+                <div class="card-header">
+                    <span class="code">{r['code']}</span>
+                    <span class="name">{r.get('name','')}</span>
+                    <span class="action-badge">卖</span>
+                </div>
+                <div class="price-row">
+                    <div class="price-item">
+                        <div class="price-label">现价</div>
+                        <div class="price-value">¥{r['price']:.2f}</div>
+                    </div>
+                    <div class="price-item">
+                        <div class="price-label">建议卖出</div>
+                        <div class="price-value" style="color:#ef4444">≥¥{r['price']*1.002:.2f}</div>
+                    </div>
+                    <div class="price-item">
+                        <div class="price-label">涨跌</div>
+                        <div class="price-value" style="color:{chg_color}">{chg:+.2f}%</div>
+                    </div>
+                </div>
+                <div class="reason">📌 {r.get('reason','')}</div>
+                <div style="margin-top:8px;">
+                    <span class="confidence">置信度 {r['confidence']:.0f}%</span>
+                </div>
+            </div>"""
+            else:
+                html += '<div class="empty">暂无卖出信号</div>'
+            
+            html += """
+        </div>
+    </div>
+
+    <div class="log-section">
+        <div class="log-title">📜 今日交易日志 | 买入 {traded.get('buy',0)}股 / 卖出 {traded.get('sell',0)}股</div>
+        <div class="log-content">
+"""
+            
+            # 观望信号（简化显示）
+            if watch_signals:
+                html += f"<div style='color:#f59e0b;margin-bottom:10px;'>⏳ 观望中: {', '.join(f'{r['code']}({r['confidence']:.0f}%)' for r in watch_signals[:5])}</div>"
+            else:
+                html += "<div style='color:#666;'>暂无观望信号</div>"
+            
+            html += """
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <div class="stat">
+        <div class="stat-item">最后扫描: <span>""" + last_scan + """</span></div>
+        <div class="stat-item">股票池: <span>""" + str(len(ALL_CODES)) + """只</span></div>
+        <div class="stat-item">盯盘: <span>""" + str(len(KEY_CODES)) + """只</span></div>
+    </div>
+    <div class="stat-item">
+        按 F5 刷新 | POST /scan {"code":"002539"}
+    </div>
+</div>
+
+</body></html>"""
+            return html.encode('utf-8')
 
         def log_message(self, fmt, *args):
             pass  # 减少日志噪音
