@@ -967,7 +967,7 @@ def _start_http_server(port=8080):
 
                         '</body></html>')
 
-            return ''.join(html).encode('utf-8')
+            return ''.join(html)
 
         def log_message(self, fmt, *args):
             pass  # 减少日志噪音
