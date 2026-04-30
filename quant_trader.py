@@ -774,7 +774,7 @@ def start_http_server(port=8080):
                 '</div></body></html>'
             ]
 
-            return ''.join(html).encode('utf-8')
+            return ''.join(html)
 
         def log_message(self, fmt, *args):
             pass
